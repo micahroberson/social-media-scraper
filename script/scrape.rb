@@ -3,9 +3,10 @@ require 'open-uri'
 require 'json'
 require 'cgi'
 require 'nokogiri'
+#require 'highline'
 
 
-#run C:\Users\Kenny Chan\Documents\Dropbox\Scraper\Selenium\gilt.rb "gilt" "Etsy" "fab.com" "hautelook" "zappos" "burberry" "toms" "RueLaLa" "ModCloth" "hayneedle" "shopbop" "MRPORTERLIVE" "narscosmetics" "quirky" "thinkgeek" "warbyparker" "31PhillipLimOfficial" "ragandbonenewyork" "AlexanderWangNY" "gq" "hm" "uniqlo.us" "GiltCity" "Coach" "Fendi"
+$pages =  ["gilt","Etsy","fab.com","hautelook","zappos","burberry","toms","RueLaLa","ModCloth","hayneedle","shopbop","MRPORTERLIVE","narscosmetics","quirky","thinkgeek","warbyparker","31PhillipLimOfficial","ragandbonenewyork","AlexanderWangNY","gq","hm","uniqlo.us","GiltCity","Coach","Fendi","LouisVuitton","michaelkors"]
 
 @driver = Selenium::WebDriver.for :firefox
 @base_url = "https://www.facebook.com/"
@@ -69,6 +70,20 @@ def scrollToGetMorePosts
 end
 
 def scrapePage(address)
+  $resultsObj[address] = {}
+
+  #Get likes
+  @driver.get(@base_url + address + "/likes")
+  #Wait for page footer to load
+  !60.times{ break if (element_present?(:css, "#pageFooter") rescue false); sleep 1 }
+
+  doc = Nokogiri::HTML(@driver.page_source)
+  @likes = doc.css('.timelineLikesBigNumber')
+  $resultsObj[address]['people_talking'] = @likes[0].text.gsub(',','').to_i
+  $resultsObj[address]['total_likes'] = @likes[1].text.gsub(',','').to_i
+
+
+  #Get posts
   @driver.get(@base_url + address + "?filter=1")
 
   #Wait for page footer to load
@@ -80,40 +95,34 @@ def scrapePage(address)
   #Check if we need to scroll to get more posts
   scrollToGetMorePosts
 
-  $resultsObj[address] = {}
+  
   @posts.each do |post|
     timeId = post['data-time'].to_i
-    likeSentence = post.css('.UFILikeSentence').text
+    likeSentence = post.css('.UFILikeSentence').text.gsub(',','')
     likeCount = likeSentence.match(/[0-9]+/)
     if likeCount
       likeCount = likeCount[0].to_i
-      likeSentence = "omitted"
     else
       likeCount = "unknown"
     end
-    commentSentence = post.css('.UFIFirstCommentComponent').text
+    commentSentence = post.css('.UFIFirstCommentComponent').text.gsub(',','')
     commentCount = commentSentence.match(/[0-9]+\s*of\s*([0-9]+)/)
     if commentCount
       commentCount = commentCount[1].to_i + 2
-      commentSentence = "omitted"
     else
       commentCount = commentSentence.match(/([0-9]+)\s*more/)
       if commentCount
         commentCount = commentCount[1].to_i + 2
-        commentSentence = "omitted"
       else
         commentCount = "unknown"
       end
     end
-    shares = post.css('.fbTimelineFeedbackShares').text
+    shares = post.css('.fbTimelineFeedbackShares').text.gsub(',','')
     if shares.to_i > 0
       shared = shares.to_i
     end
 
     postText = post.css('[role="article"]').text
-    # if @previousJSON && @previousJSON[address] && @previousJSON[address][timeId]
-    #   postText = "omitted"
-    # else
 
     $resultsObj[address][timeId] = {
       :text => postText,
@@ -144,10 +153,11 @@ def parseArgs
   else
     raise "No password provided. Please use the syntax program.rb --username --password site1 site2.."
   end
-  $pages = ARGV[2..ARGV.length]
+  # $pages = ARGV[2..ARGV.length]
 rescue 
   p "Please use the syntax program.rb --username --password site1 site2.."
 end
+
 
 parseArgs
 login
@@ -155,8 +165,8 @@ login
 until true == false
   $resultsObj = {}
 
-  # lastFile = Dir['../json/*'].last
-  # file = File.open(lastFile, "r")
+  # require "active_support/core_ext"
+  # file = File.open(Dir['../json/*'].last, "r")
   # @previousJSON = JSON.load(file)
 
   for address in $pages
@@ -166,13 +176,30 @@ until true == false
       scrapePage(address)
     rescue
       until retries >= @scrapeRetries
+        sleep 5
+        retries+=1
+        p "error with scrape, " + retries.to_s + " retries"
         begin
-          p "Scraping " + address
+          p "Trying scrape " + address
           scrapePage(address)
-          break
+          retries = 4
         rescue
-          p "error with scrape, " + retries.to_s + " retries"
-          retries+=1
+          begin
+            p "Quitting driver"
+            @driver.quit
+          rescue
+            "couldn't quit driver"
+          end
+          begin
+            p "relaunching driver"
+            @driver = (Selenium::WebDriver.for :firefox)
+            login
+            p "Trying scrape " + address
+            scrapePage(address)
+            retries = 4
+          rescue
+            p "couldn't relaunch driver"
+          end
         end
       end
     end
