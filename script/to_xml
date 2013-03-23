@@ -1,0 +1,11 @@
+require 'json'
+require "active_support/core_ext"
+
+Dir['../json/*.json'].each do |file|
+	timestamp = file.gsub('.json', '')
+	my_xml = JSON.load(File.open(file, "r")).to_xml(:root => timestamp)
+	File.open('../xml/' + timestamp + '.xml', 'w') do |f|
+		f.write(my_xml)
+	end
+	file.close
+end

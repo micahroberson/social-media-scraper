@@ -1,0 +1,3 @@
+gilt?fields=posts.fields(id,message,created_time,type,likes,link,promotion_status,shares,timeline_visibility,comments.fields(comments.fields(message,comments,likes),likes,message)),likes,offers
+
+gilt?fields=posts.fields(comments.fields(comments.fields(message,comments,likes),likes,message),type,message),likes,offers

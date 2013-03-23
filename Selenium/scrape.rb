@@ -5,7 +5,7 @@ require 'cgi'
 require 'nokogiri'
 
 
-#run C:\Users\Kenny Chan\Documents\Dropbox\Scraper\Selenium\gilt.rb "gilt" "Etsy" "fab.com" "hautelook" "zappos" "burberry" "toms" "RueLaLa" "ModCloth" "hayneedle" "shopbop" "MRPORTERLIVE" "narscosmetics" "quirky" "thinkgeek" "warbyparker" "31PhillipLimOfficial" "ragandbonenewyork" "AlexanderWangNY" "gq" "hm" "uniqlo.us" "GiltCity" "Coach" "Fendi"
+#run C:\Users\Kenny Chan\Documents\Dropbox\Scraper\scrape.rb "gilt" "Etsy" "fab.com" "hautelook" "zappos" "burberry" "toms" "RueLaLa" "ModCloth" "hayneedle" "shopbop" "MRPORTERLIVE" "narscosmetics" "quirky" "thinkgeek" "warbyparker" "31PhillipLimOfficial" "ragandbonenewyork" "AlexanderWangNY" "gq" "hm" "uniqlo.us" "GiltCity" "Coach" "Fendi"
 
 @driver = Selenium::WebDriver.for :firefox
 @base_url = "https://www.facebook.com/"
@@ -166,13 +166,30 @@ until true == false
       scrapePage(address)
     rescue
       until retries >= @scrapeRetries
+        sleep 5
+        retries+=1
+        p "error with scrape, " + retries.to_s + " retries"
         begin
-          p "Scraping " + address
+          p "Trying scrape " + address
           scrapePage(address)
-          break
+          retries = 4
         rescue
-          p "error with scrape, " + retries.to_s + " retries"
-          retries+=1
+          begin
+            p "Quitting driver"
+            @driver.quit
+          rescue
+            "couldn't quit driver"
+          end
+          begin
+            p "relaunching driver"
+            @driver = (Selenium::WebDriver.for :firefox)
+            login
+            p "Trying scrape " + address
+            scrapePage(address)
+            retries = 4
+          rescue
+            p "couldn't relaunch driver"
+          end
         end
       end
     end
