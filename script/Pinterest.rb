@@ -6,8 +6,8 @@ require 'nokogiri'
 
 @driver = Selenium::WebDriver.for :firefox
 @base_url = "http://pinterest.com/"
-@results = []
-@arguments = ['gilt', 'armani', 'michaelkors']
+@results = {}
+@arguments = ['gilt', 'michaelkors']
 	
 
 def goToSite(pinners)
@@ -18,34 +18,48 @@ def goToSite(pinners)
 		
 		#wait for page to load
 		sleep(2)
-		$totalData = []	
-		scrapePage(url)
 
+		@driver.get(url)
+		doc = Nokogiri::HTML(@driver.page_source)
+
+		@results[Time.now] = {
+			:pinner => pinner,
+			:metaData => metaData(url, doc),
+			:pinsData => scrapePage(url, doc)
+		}
 	end
+
+	print @results
 end
 		
-def scrapePage(address)
-	@driver.get(address)
-	doc = Nokogiri::HTML(@driver.page_source)
+def metaData(address, doc)
+	
 	title = doc.css('.ProfileInfo .content h1').text.strip
 	summaryData = doc.css('#ContextBar .links li a strong')
-	summaryData.each do |data|
-		dataataString = data.text
-		dataInteger = dataString.gsub(",", '').to_i
-		$totalData << dataInteger
-	end
-
+	totalPins = summaryData[1].text.gsub(",", '').to_i
+	totalLikes = summaryData[2].text.gsub(",", '').to_i
+	followData = doc.css('#ContextBar .follow li a strong')
+	totalFollowers = followData[0].text.gsub(",", '').to_i
+	totalFollowing = followData[1].text.gsub(",", '').to_i
 	
+	totalData = {
+		:title => title,
+		:totalPins => totalPins,
+		:totalLikes => totalLikes,
+		:followers => totalFollowers,
+		:following => totalFollowing
+	}
 
-	followersInfo = doc.css('#ContextBar .follow li a strong')
-	followersInfoInt = followersInfo[0].text.gsub(",",'').to_i
+	totalData
+end
+
+def scrapePage(address, doc)	
+	
+	scrapeData= {}
 	@pins = doc.css('.pin')
-	page = [title, [followersInfoInt, $totalData]]
-	
-
-	#$resultsObj[address] = {}
-
 	@pins.each do |pin|
+		pinId = pin['data-id']
+		
 		description = pin.css('.description').text
 		stats = pin.css('.stats')
 		likes = pin.css('.stats .LikesCount').text.gsub(",",'').strip.split(' ')
@@ -64,17 +78,20 @@ def scrapePage(address)
 		end
 		
 		where = pin.css('.convo .NoImage a')[1].text
-		page << [description, likesCount, repinsCount, where]
+		
+		scrapeData[pinId] = {
+			:description => description,
+			:likes => likesCount,
+			:repins => repinsCount,
+			:origin => where
+		}
 		
 	end
-	@results << page
+	scrapeData
 end
 
-
-
-
 goToSite(@arguments)
-print @results
+
 
 
 
