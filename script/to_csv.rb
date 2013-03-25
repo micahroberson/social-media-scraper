@@ -2,7 +2,7 @@ require 'json'
 require "active_support/core_ext"
 require 'csv'
 
-$postSchema = ["text", "shares", "likeSentence", "likeCount", "commentSentence", "commentCount"]
+$postSchema = ["text", "textTrimmed", "shares", "likeSentence", "likeCount", "commentSentence", "commentCount"]
 
 p "How many files to processs? (enter #file or all)"
 $numFiles = gets.chomp()
@@ -18,17 +18,29 @@ else
 	$numFiles = $numFiles.to_i
 end
 
+def trimPost(text)
+	try = text.match(/.+(january|february|march|april|may|june|july|august|september|october|november|december)\s[0-9]+(.+)/i)
+	if try ; return try[2] ; end
+	try = text.match(/.+(yesterday|sunday|monday|tuesday|wednesday|thursday|friday|saturday)(.+)/i)
+	if try ; return try[2] ; end
+	try = text.match(/(.+ago)(.+)/i)
+	if try ; return try[2] ; end
+	return text
+end
+
+
+
 def csvParse(data)
 	csvData = CSV.generate do |csv|
 		postKeys = data[data.keys.first][data[data.keys.first].keys.last].keys
 		csv << ['pull_time', 'site', 'post_id', 'people_talking', 'total_likes'] + $postSchema
 		data.each do |site_name, site_data|
 			if site_name != $filter then next end
+			peopleTalking = data[site_name]["people_talking"]
+			totalLikes = data[site_name]["total_likes"]
 
 			data[site_name].each do |post_id, post_data|
-				if post_id == 0 then next end
-				if post_id == "people_talking" ; peopleTalking = post_data; next; end
-				if post_id == "total_likes" ; totalLikes = post_data; next; end
+				if [0, "0", "people_talking", "total_likes"].include? post_id ; next ; end
 				csvRow = []
 				$postSchema.each do |k|
 					begin
@@ -65,6 +77,7 @@ def checkRow(row)
 		commentCount = commentCount ? commentCount[1].to_i + 2 : ''
 		row[$postSchema.index('commentCount')] = commentCount
 	end
+	row[$postSchema.index('textTrimmed')] = trimPost(row[$postSchema.index('text')])
 	return row
 end
 

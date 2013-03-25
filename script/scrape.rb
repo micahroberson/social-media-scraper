@@ -6,7 +6,7 @@ require 'nokogiri'
 #require 'highline'
 
 
-$pages =  ["gilt","Etsy","fab.com","hautelook","zappos","burberry","toms","RueLaLa","ModCloth","hayneedle","shopbop","MRPORTERLIVE","narscosmetics","quirky","thinkgeek","warbyparker","31PhillipLimOfficial","ragandbonenewyork","AlexanderWangNY","gq","hm","uniqlo.us","GiltCity","Coach","Fendi","LouisVuitton","michaelkors"]
+$pages =  ["gilt","Etsy","fab.com","hautelook","zappos","burberry","toms","RueLaLa","ModCloth","hayneedle","shopbop","MRPORTERLIVE","narscosmetics","quirky","thinkgeek","warbyparker","31PhillipLimOfficial","ragandbonenewyork","AlexanderWangNY","gq","hm","uniqlo.us","GiltCity","Coach","Fendi","LouisVuitton","michaelkors","RalphLauren","OXO"]
 
 @driver = Selenium::WebDriver.for :firefox
 @base_url = "https://www.facebook.com/"
@@ -28,11 +28,25 @@ def login
     @driver.find_element(:css, "#loginbutton input").click
   end
 
+  #wait for machine name box to load
+  !60.times{ break if (element_present?(:css, "#machine_name") || element_present?(:css, "#checkpointSubmitButton") rescue false); sleep 1 }
+
   #Test if we need to name machine
   if element_present?(:id, "machine_name")
     @driver.find_element(:id, "machine_name").clear
     @driver.find_element(:id, "machine_name").send_keys "testsel"
     @driver.find_element(:css, "#checkpointSubmitButton input").click
+  elsif element_present?(:id, "checkpointSubmitButton")
+    #situation where they need you to verify login
+    @driver.find_element(:css, "#checkpointSubmitButton input").click
+    !60.times{ break if (element_present?(:css, "#checkpointSecondaryButton") rescue false); sleep 1 }
+    @driver.find_element(:css, "#checkpointSecondaryButton input").click
+    2.times do 
+      !60.times{ break if (element_present?(:css, "#machine_name") rescue false); sleep 1 }
+      @driver.find_element(:id, "machine_name").clear
+      @driver.find_element(:id, "machine_name").send_keys "testsel"
+      @driver.find_element(:css, "#checkpointSubmitButton input").click
+    end
   end
 
   #Wait for homepage to load
