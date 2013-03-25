@@ -208,7 +208,7 @@ def getGoogleShoppingResults(sku)
   $googleShoppingLimit.times do
     i += 1
     doc = Nokogiri::HTML(open("http://www.google.com/search?q=" + sku + "&tbm=shop&start=" + (10 * i).to_s))
-    results = doc.css('li.g')
+    results = doc.css('.pslimain')
     results.each do |result|
       href = result.css('h3.r a')[0]['href']
 
