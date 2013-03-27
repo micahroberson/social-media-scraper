@@ -139,22 +139,50 @@ def getGoogleSearchResults(sku, site)
 
 end
 
-def getGoogleShoppingResults(sku)
+def getGoogleShoppingResults(sku, site)
 
   i = -1
   GOOGLE_SHOPPING_LIMIT.times do
 
     i += 1
-    doc = Nokogiri::HTML(open("http://www.google.com/search?q=" + sku + "&tbm=shop&start=" + (10 * i).to_s))
-    results = doc.css('.pslimain')
-    results.each do |result|
-      href = result.css('h3.r a')[0]['href']
+    url = "http://www.google.com/search?q=" + sku + "&tbm=shop&start=" + (10 * i).to_s + "&tbs=vw:l"
+    
+    doc = Nokogiri::HTML(open(url))
+    productLink = doc.css('#ires ol > li h3.r a')[0]
+    link = "http://www.google.com#{productLink['href']}"
+    #Follow link
+    puts "Url to be opened: #{link}"
+    doc = Nokogiri::HTML(open(link))
 
+    results = doc.css('.os-main-table tr')
+
+    results.each_with_index do |result, i|
+
+      next if i == 0
+
+      link = result.css('.os-seller-name a')[0]
+      href = link['href']
+      puts "href: #{href}"
       #skip if this is a google result (e.g., images, shopping)
       next if !href.match(/^\/url\?q/) || href.match(SITES_TO_SKIP) || ($filter && !href.match($filter))
 
-      id = Digest::SHA1.hexdigest(href)
-      SearchResult.create(result)
+      attrs = {}
+      attrs[:href] = CGI::unescape(href.gsub('/url?q=', ''))
+      # attrs[:citation] = result.css('cite').text
+      attrs[:title] = link.text
+      attrs[:url_root] = attrs[:href].gsub('www.', '').match(/([^\/]+)\//)[1] || attrs[:href].gsub('www.', '')
+      # attrs[:preview_text] = result.css('span.st').text
+      attrs[:price_string] = result.css('.os-base_price').text
+      attrs[:price] = parsePriceString attrs[:price_string]
+      attrs[:results_index] = (10 * i) + index
+      attrs[:site_name] = site
+      attrs[:sku] = sku
+      attrs[:shopping] = true
+
+      sr = SearchResult.where(site_name: site, sku: sku, url_root: attrs[:url_root]).first_or_create
+      sr.update_attributes(attrs.merge(updated_at: Time.now))
+      puts sr.inspect
+
     end
 
   end

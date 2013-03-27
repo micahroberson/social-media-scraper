@@ -21,6 +21,7 @@ class SearchResult
   field :preview_text, :type => String
   field :price_string, :type => String
   field :results_index, :type => Integer
+  field :shopping, :type => Boolean, :default => false
 
   has_many :prices
 

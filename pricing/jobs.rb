@@ -9,6 +9,7 @@ require 'nokogiri'
 require 'digest/sha1'
 require 'restclient'
 
+# Updates products in the database from manufacturers website (ie. the products to search for later)
 def updateProductList
 
   puts "Start - Check Reference Sites for New Products and/or Price Changes"
@@ -67,6 +68,7 @@ def updateProductList
 
 end
 
+# Updates the search results stored in the db which are used to gather pricing data at more frequency intervals
 def updateGoogleSearchResults
 
   puts "Updating Google Search Results"
@@ -78,15 +80,6 @@ def updateGoogleSearchResults
       puts "Grabbing Results for #{site.humanize.capitalize}:#{sku}"
 
       getGoogleSearchResults(sku, site)
-    #   getPrices
-    #   $searchResults.each do |key,data|
-    #     p data.urlRoot + ': '+ (data.stockStatus || 'no stock status') + ' (' + (data.priceString || 'no price string') + ')'
-    #     if $siteCount[data.urlRoot]
-    #       $siteCount[data.urlRoot] = $siteCount[data.urlRoot] + 1
-    #     else
-    #       $siteCount[data.urlRoot] = 1
-    #     end
-    #   end
 
     end
 
@@ -94,6 +87,25 @@ def updateGoogleSearchResults
 
 end
 
+def updateGoogleShoppingResults
+
+  puts "Updating Google Shopping Results"
+
+  SITE_CONFIG.each do |site, opts|
+
+    Product.where(site_name: site).distinct(:sku).each do |sku|
+
+      puts "Grabbing Google Shopping Results for #{site.humanize.capitalize}:#{sku}"
+
+      getGoogleShoppingResults(sku, site)
+
+    end
+
+  end
+
+end
+
+# Updates pricing data in the db based on the search results already stored in the db
 def updatePrices
 
   puts "Updating Search Result Prices"
@@ -114,4 +126,5 @@ end
 
 # updateProductList
 # updateGoogleSearchResults
-updatePrices
+updateGoogleShoppingResults
+# updatePrices
