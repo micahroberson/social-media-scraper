@@ -148,31 +148,43 @@ def getGoogleShoppingResults(sku, site)
     url = "http://www.google.com/search?q=" + sku + "&tbm=shop&start=" + (10 * i).to_s + "&tbs=vw:l"
     
     doc = Nokogiri::HTML(open(url))
+    # puts doc.css('#ires a').inspect
     productLink = doc.css('#ires ol > li h3.r a')[0]
-    link = "http://www.google.com#{productLink['href']}"
+    docid = productLink['href'].match(/(?<=docid=)(.*?)(?=&q=)/)
+    link = "http://www.google.com/shopping/product/#{docid}?q=#{sku}&sa=X"
     #Follow link
     puts "Url to be opened: #{link}"
     doc = Nokogiri::HTML(open(link))
+    
+    results = doc.css('.ps-sellers-table-container tr')
 
-    results = doc.css('.os-main-table tr')
+    if results.size == 0 
+      puts "No results"
+    end
 
-    results.each_with_index do |result, i|
+    results.each_with_index do |result, index|
 
-      next if i == 0
+      next if index == 0
 
-      link = result.css('.os-seller-name a')[0]
+      link = result.css('.seller-name a')[0]
+      # puts "link.inspect: " + link.inspect
+
+      next if link.nil?
+      
       href = link['href']
-      puts "href: #{href}"
+      # puts "href: #{href}"
       #skip if this is a google result (e.g., images, shopping)
-      next if !href.match(/^\/url\?q/) || href.match(SITES_TO_SKIP) || ($filter && !href.match($filter))
-
+      # next if !href.match(/^\/url\?q/) || href.match(SITES_TO_SKIP) || ($filter && !href.match($filter))
+      # puts "*********************"
+      # puts result.inspect
+      # puts "*********************"
       attrs = {}
       attrs[:href] = CGI::unescape(href.gsub('/url?q=', ''))
       # attrs[:citation] = result.css('cite').text
       attrs[:title] = link.text
-      attrs[:url_root] = attrs[:href].gsub('www.', '').match(/([^\/]+)\//)[1] || attrs[:href].gsub('www.', '')
+      attrs[:url_root] = URI.parse( attrs[:href].gsub(/.*&adurl=/, '') ).host
       # attrs[:preview_text] = result.css('span.st').text
-      attrs[:price_string] = result.css('.os-base_price').text
+      attrs[:price_string] = result.css('.base-price').text
       attrs[:price] = parsePriceString attrs[:price_string]
       attrs[:results_index] = (10 * i) + index
       attrs[:site_name] = site
